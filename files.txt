@@ -1,0 +1,6 @@
+/home/marcello/.local/lib/python3.6/site-packages/turbohpsi-0.1-py3.6.egg
+/home/marcello/.local/bin/easy_install
+/home/marcello/.local/bin/easy_install-3.6
+/home/marcello/.local/bin/f2py
+/home/marcello/.local/bin/f2py3
+/home/marcello/.local/bin/f2py3.6

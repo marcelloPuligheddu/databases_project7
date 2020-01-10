@@ -1,6 +1,6 @@
 # Makefile
 
-include ../maketest.inc
+include ../../make.inc
 
 default: title all
 

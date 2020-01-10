@@ -27,14 +27,14 @@ cleandoc:
 	if test -d doc ; then ( cd doc ; make clean ) ; fi
 
 cleantest: 
-	if test -d test-suite ; then ( cd test-suite ; make clean ) ; fi
+	if test -d test_suite ; then ( cd test_suite ; make clean ) ; fi
 
 test: 
 	@echo "                 "
 	@echo "#################"
 	@echo "#### < TEST > ###"
 	@echo "#################"
-	if test -d test-suite ; then ( cd test-suite ; make ) ; fi
+	if test -d test_suite ; then ( cd test_suite ; make ) ; fi
 	@echo "#################"
 	@echo "#### </ TEST > ##"
 	@echo "#################"
