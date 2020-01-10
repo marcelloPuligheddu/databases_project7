@@ -1,7 +1,0 @@
-README.md
-setup.py
-turbohpsi.egg-info/PKG-INFO
-turbohpsi.egg-info/SOURCES.txt
-turbohpsi.egg-info/dependency_links.txt
-turbohpsi.egg-info/requires.txt
-turbohpsi.egg-info/top_level.txt
