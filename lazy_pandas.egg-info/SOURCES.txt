@@ -1,0 +1,7 @@
+README.md
+setup.py
+lazy_pandas.egg-info/PKG-INFO
+lazy_pandas.egg-info/SOURCES.txt
+lazy_pandas.egg-info/dependency_links.txt
+lazy_pandas.egg-info/requires.txt
+lazy_pandas.egg-info/top_level.txt
