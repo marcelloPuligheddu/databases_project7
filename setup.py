@@ -19,18 +19,6 @@ setup(name=__name__,
       include_package_data=True,
       install_requires=[
           'pandas',
-          'mpi4py',
-          'numpy',
-          'scipy',
-          'datetime',
           'setuptools',
-          'beautifultable',
-          'sphinx', 
-          'sphinx_rtd_theme',
-          'nbsphinx', 
-          'ipython', 
-          'pyaml', 
-          'mendeleev',
-          'urllib3' 
       ],
       python_requires='>=3.6, <4')
