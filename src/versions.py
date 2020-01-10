@@ -1,4 +1,4 @@
-__name__ = 'turbohpsi'
+__name__ = 'lazy_pandas'
 __version__ = '0.1'
 __description__ = 'lazy pandas'
 __url__ = 'https://github.com/marcelloPuligheddu/databases_project7' 
