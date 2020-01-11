@@ -39,6 +39,16 @@ test:
 	@echo "#### </ TEST > ##"
 	@echo "#################"
 
+demo: 
+	@echo "                 "
+	@echo "#################"
+	@echo "#### < DEMO > ###"
+	@echo "#################"
+	if test -d demo_suite ; then ( cd demo_suite ; make ) ; fi
+	@echo "#################"
+	@echo "#### </ DEMO > ##"
+	@echo "#################"
+
 clean: 
 	@echo "                 "
 	@echo "#################"
