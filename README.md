@@ -6,8 +6,7 @@ In many cases, Pandas is used within Python environments in an ad-hoc way: users
 
 ## Initial scope:
 
-Pandas pipelines, even in a single file or ipython notebook, can be rather complicated and intermixed with call to other libraries reading and wrinting data to and from series and dataframes. 
-In this project, we wish to define a wrapper around the pandas library. It should capture access to data both in read and write and operations on data, such as group, jon, merge, selection, etc. Once the data are requested, the relevant operation should be indentified, sent to an optimizer for sequencing/transformation and then returned
+Pandas pipelines, even in a single file or ipython notebook, can be rather complicated and intermixed with calls to other libraries reading and writing data to and from series and dataframes. In this project, we wish to define a wrapper around the pandas library. It should capture access to data both in read and write and operations on data, such as group, join, merge, selection, etc. Once the data are requested, the relevant operation should be identified, sent to an optimizer for sequencing/transformation and then returned
 
 
 ## See:
