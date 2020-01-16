@@ -5,37 +5,39 @@
 
 
 import pandas as pd
+import numpy as np
+import sqlalchemy as sqlA
 import sqlite3
+import os
+import matplotlib.pyplot as plt
 
 
-# In[2]:
+# In[4]:
 
 
-#get_ipython().system('rm DB_uni_large/uni_large.db')
-#get_ipython().system('ls DB_uni_large/')
-conn = sqlite3.connect('DB_uni_large/uni_large.db')
+if os.path.exists('../DB_uni_large/uni_large.db'):
+    os.remove('../DB_uni_large/uni_large.db')
+# engine = sqlA.create_engine('sqlite:///DB_uni_large/uni_large.db')
+conn = sqlite3.connect('../DB_uni_large/uni_large.db')
 c = conn.cursor()
 conn.commit()
 conn
 
 
-# In[3]:
+# In[6]:
 
 
 with conn as con:
-    for inputfilename in ['DB_uni_large/uni_definition.sql', 'DB_uni_large/uni_relation_large.sql']:
+    for inputfilename in ['../DB_uni_large/uni_definition.sql', '../DB_uni_large/uni_relation_large.sql']:
         with open(inputfilename) as file:
                 instructions = file.read().replace('\n','').replace('\t',' ').split(';')
-                print(inputfilename, len(instructions), flush=True)
+                print('Reading', inputfilename, 'Instructions:', len(instructions), flush=True)
                 for i, instr in enumerate(instructions):
                     instr = instr+';'
-                    try:
-                        con.execute(instr)
-                    except: #likely the database is already there
-                        pass
+                    con.execute(instr)
 
 
-# In[4]:
+# In[7]:
 
 
 with conn as con:
@@ -51,7 +53,7 @@ where
     print((out.fetchall()))
 
 
-# In[5]:
+# In[8]:
 
 
 with conn as con:
@@ -61,7 +63,7 @@ with conn as con:
     print((out.fetchall()))
 
 
-# In[6]:
+# In[9]:
 
 
 with conn as con:
@@ -72,7 +74,7 @@ select title from course where course.dept_name = 'Comp. Sci.' and course.credit
         print(x)
 
 
-# In[7]:
+# In[10]:
 
 
 with conn as con:
@@ -91,7 +93,7 @@ where
         print(x)
 
 
-# In[8]:
+# In[11]:
 
 
 with conn as con:
@@ -104,7 +106,7 @@ from instructor
         print(x)
 
 
-# In[21]:
+# In[12]:
 
 
 with conn as con:
@@ -136,7 +138,7 @@ and salary = (select max(salary) from instructor)
         print(x)
 
 
-# In[38]:
+# In[13]:
 
 
 with conn as con:
@@ -168,7 +170,7 @@ from (
         print(x)
 
 
-# In[39]:
+# In[14]:
 
 
 with conn as con:
@@ -182,7 +184,7 @@ group by dept_name
         print(x)
 
 
-# In[40]:
+# In[15]:
 
 
 with conn as con:
@@ -193,4 +195,24 @@ from instructor natural join teaches
     print([description[0] for description in out.description])
     for x in out.fetchall():
         print(x)
+
+
+# In[16]:
+
+
+out = None
+with conn as con:
+    out = con.execute("""
+select dept_name, avg(salary) as average_salary
+from instructor
+group by dept_name
+; """)
+label = [description[0] for description in out.description]
+res = np.array(out.fetchall()).T
+
+plt.figure(figsize=(20, 10))
+plt.bar(res[0], [float(x) for x in res[1]])
+plt.xlabel(label[0])
+plt.ylabel(label[1])
+plt.show()
 

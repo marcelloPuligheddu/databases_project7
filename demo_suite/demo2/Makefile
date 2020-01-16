@@ -7,6 +7,7 @@ default: title all
 all: run 
 
 run:
+	jupyter nbconvert --to script demo.ipynb;
 	${PARA_PREFIX} ${PYT} demo.py > demo.out
 
 clean:
