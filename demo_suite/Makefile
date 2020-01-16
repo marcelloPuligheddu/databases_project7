@@ -1,6 +1,6 @@
 # Makefile
 #
-demodirs:= demo1 demo2
+demodirs:= demo1 demo2 demo3
 
 SHELL := /bin/bash
 
