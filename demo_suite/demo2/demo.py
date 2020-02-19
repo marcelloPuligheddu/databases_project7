@@ -12,7 +12,7 @@ import os
 import matplotlib.pyplot as plt
 
 
-# In[4]:
+# In[2]:
 
 
 if os.path.exists('../DB_uni_large/uni_large.db'):
@@ -24,7 +24,7 @@ conn.commit()
 conn
 
 
-# In[6]:
+# In[3]:
 
 
 with conn as con:
@@ -37,7 +37,7 @@ with conn as con:
                     con.execute(instr)
 
 
-# In[7]:
+# In[4]:
 
 
 with conn as con:
@@ -138,12 +138,13 @@ and salary = (select max(salary) from instructor)
         print(x)
 
 
-# In[13]:
+# In[11]:
 
 
+#  select instructor.name, count(*)
 with conn as con:
     out = con.execute("""
-select instructor.name, count(*) as number_of_slave
+select *
 from instructor, advisor, student
 where instructor.ID = advisor.i_ID
 and student.ID = advisor.s_ID
@@ -152,6 +153,10 @@ group by instructor.ID
     print([description[0] for description in out.description])
     for x in out.fetchall():
         print(x)
+
+
+# In[7]:
+
 
 print()
 with conn as con:
@@ -215,4 +220,33 @@ plt.bar(res[0], [float(x) for x in res[1]])
 plt.xlabel(label[0])
 plt.ylabel(label[1])
 plt.show()
+
+
+# In[22]:
+
+
+with conn as con:
+    out = con.execute("""
+select instructor.name, avg(student.tot_cred) as ave_cred_slave
+from instructor, advisor, student
+where instructor.ID = advisor.i_ID
+and student.ID = advisor.s_ID
+group by instructor.ID
+order by ave_cred_slave desc
+; """)
+    print([description[0] for description in out.description])
+    for x in out.fetchall():
+        print(x)
+
+
+# In[8]:
+
+
+with conn as con:
+    out = con.execute("""
+select * from student
+; """)
+    print([description[0] for description in out.description])
+    for x in out.fetchall():
+        print(x)
 
