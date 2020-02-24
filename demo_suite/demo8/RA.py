@@ -207,6 +207,36 @@ class RA_avg(RA_operator):
     def generate_stack(self):
         return self.ra_stack
 
+class RA_stdev(RA_operator):
+    def __init__(self, orig):
+        self.orig = orig
+        self.ra_stack = cp.copy(self.orig.generate_stack())
+        self.ra_stack.aggregate_stack.append('stdev')
+        if len(self.ra_stack.select_stack) == 1:
+            self.ra_stack.select_stack = 'stdev('+self.ra_stack.select_stack[0]+')'
+    def _as_string(self, depth=0, indent=2):
+        ret = 'rasv '+str(depth)+'\n'
+        ret += " "*depth*indent + 'stdev \n'
+        ret += self.orig._as_string(depth+1) + '\n'
+        return ret
+    def generate_stack(self):
+        return self.ra_stack
+
+class RA_stdevp(RA_operator):
+    def __init__(self, orig):
+        self.orig = orig
+        self.ra_stack = cp.copy(self.orig.generate_stack())
+        self.ra_stack.aggregate_stack.append('stdevp')
+        if len(self.ra_stack.select_stack) == 1:
+            self.ra_stack.select_stack = 'stdevp('+self.ra_stack.select_stack[0]+')'
+    def _as_string(self, depth=0, indent=2):
+        ret = 'rasp '+str(depth)+'\n'
+        ret += " "*depth*indent + 'stdevp \n'
+        ret += self.orig._as_string(depth+1) + '\n'
+        return ret
+    def generate_stack(self):
+        return self.ra_stack
+
 class RA_dropna_subset(RA_operator):
     def __init__(self, orig, subset):
         self.orig  = orig
@@ -299,7 +329,7 @@ class RA_stack():
         return self.generate_query()
         
 def unique_original_order(x):
-    sorted_unique, unique_reverse_index = np.unique(x , return_inverse=True)
-    return sorted_unique[np.unique(unique_reverse_index)]
+    uniq, index = np.unique(x, return_index=True)
+    return uniq[index.argsort()]
         
         

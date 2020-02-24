@@ -28,7 +28,7 @@ class lazyDf():
         self._array = None
         self.RA = RA
         self.stack = self.RA.generate_stack()
-        print('new lzpd stack', self.stack)
+        print('new lzpd stack', self.dotted_fields, self.stack)
     def add_engine(self, con):
         self.con = con
 
@@ -102,6 +102,20 @@ class lazyDf():
         ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype,
                      RA.RA_sum( self ), self.con)
         return ret
+    def std(self):
+        print('caught std')
+        ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype,
+                     RA.RA_stdev( self ), self.con)
+        return ret
+    def std_pop(self):
+        print('caught std')
+        ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype,
+                     RA.RA_stdevp( self ), self.con)
+        return ret
+    def stdev(self):
+        return self.std()
+    def stdevp(self):
+        return self.std_pop()
     def max(self):
         print('caught max')
         ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype,
@@ -230,6 +244,8 @@ class lazyDf():
         query = self.generate_query()
         out = self.execute(query)
         return out_to_pd(out)
+    def describe(self):
+        return self.to_pd().describe()
     def info(self):
         print('lazyDataFrame')
         print('tables')
