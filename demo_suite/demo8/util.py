@@ -16,29 +16,25 @@ def _get_col_datatypes(fin):
             # Need data to decide
             if len(data) == 0:
                 continue
-            
-            if data.isdigit(): # check integer
-#                fieldTypes[field] = "INTEGER"
-#                dtypes = int
-                fieldTypes[field] = "REAL"
-                dtypes = float
-            else: # default to text
-                try: # try real
-                    temp = float(data)
-                except:
-                    fieldTypes[field] = "TEXT"
-                    dtypes = str
-                else:
-                    fieldTypes[field] = "REAL"
-                    dtypes = float
-
-        # TODO: Currently there's no support for DATE in sqllite
+            sqltype = get_types(data)
+            fieldTypes[field] = sqltype
 
     if len(feildslLeft) > 0:
         raise Exception("Failed to find all the columns data types - Maybe some are empty?")
 
-    return fieldTypes, dtypes
+    return fieldTypes
 
+def get_types(data):
+    if data.isdigit(): # check integer
+        return "REAL"
+    else: # default to text
+        try: # try real
+            temp = float(data)
+        except:
+            return "TEXT"
+        else:
+            return "REAL"
+    return "UNKNOWN"
 
 def escapingGenerator(f):
     """from https://stackoverflow.com/questions/2887878/importing-a-csv-file-into-a-sqlite3-database-table-using-python """
@@ -56,14 +52,8 @@ def csvToDb(csvFile, con=None, table_name=None):
     if con is None:
         print('No con. Creating engine')
         con = sqlite3.connect(":memory:")
-    tables_already_present_with_stupid_tuple = con.execute("select name from sqlite_master where type='table';").fetchall()
-    tables_already_present = [x[0] for x in tables_already_present_with_stupid_tuple]
-    print(tables_already_present)
-    if table_name in tables_already_present:
-        print('WARNING::Overwriting table_name inside db', flush=True)
-        con.execute('drop table ' + table_name + ' ;')
-    with open(csvFile, mode='r') as fin:
-        dt, dtypes = _get_col_datatypes(fin)
+    with open(csvFile, mode='r') as fin: # necessary ?
+        dt = _get_col_datatypes(fin)
         fin.seek(0)
         reader = csv.DictReader(fin)
         # Keep the order of the columns name just as in the CSV
@@ -73,10 +63,12 @@ def csvToDb(csvFile, con=None, table_name=None):
         for f in fields:
             cols.append("%s %s" % (f, dt[f]))
     df = pd.read_csv(csvFile, engine='c' ) #  dtype=dtypes
-    df.to_sql(table_name, con=con)
+    managed_to_sql(df, table_name, con=con, index_label='auto_index')
     dotted_fields = {}
     dotted_datatype = {}
     dotted_fields[table_name] = fields
+    dotted_fields[table_name].append('auto_index')
+    dt['auto_index'] = "INTEGER"
     dotted_datatype = dt # [table_name]
     ret = lazyDf([table_name], dotted_fields, dotted_datatype, RA.RA_from(table_name, fields))
     ret.add_engine(con)
@@ -95,3 +87,34 @@ def column_equal(cols, attr):
             ret += ' ' + col + ' = ' + str(attr) + ' and '
         ret += ' ' + cols[table][-1] + ' = ' + str(attr) + ' '
     return ret
+
+
+def managed_to_sql(df, table_name, con, index_label=None):
+    tables_already_present_with_stupid_tuple = \
+        con.execute("select name from sqlite_master where type='table';").fetchall()
+    tables_already_present = [x[0] for x in tables_already_present_with_stupid_tuple]
+    if table_name in tables_already_present:
+        print('WARNING::Overwriting table_name '+table_name+' inside db', flush=True)
+        con.execute('drop table ' + table_name + ' ;')
+    df.to_sql(table_name, con=con, index_label=index_label)
+
+def update_sql_data(table, attribute, index, value, con):
+    N = 1024
+    L = len(index)
+    if isinstance(value, (str, int, float)):
+        cmd = \
+        "update " + str(table) + \
+        " set " + str(attribute) + "=" + str(value) + \
+        " where " + table + ".auto_index=" + "(?)" + ";"
+        con.executemany(cmd, str(index))
+    else:
+        for bl_idx, _ in enumerate(index[::N]):
+            cmd = ""
+            for idx, v in zip(index[bl_idx:min(L, bl_idx+N)], value[bl_idx:min(L, bl_idx+N)]):
+                cmd = \
+                    "update " + str(table) + \
+                    " set " + str(attribute) + "=" + str(v) + \
+                    " where " + table + ".auto_index=" + str(idx) + ";"
+            con.executescript(cmd)
+    
+    

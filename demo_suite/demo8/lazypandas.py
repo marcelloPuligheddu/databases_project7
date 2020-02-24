@@ -4,7 +4,7 @@ import sqlite3
 import logging
 import cProfile
 import copy as cp
-from util import csvToDb, out_to_pd, column_equal
+from util import csvToDb, out_to_pd, column_equal, get_types, managed_to_sql, update_sql_data
 import RA
 
 class lazy_pandas():
@@ -24,6 +24,7 @@ class lazyDf():
         self.con = con
         self._shape = None
         self._ndim = None
+        self._index = None
         self.RA = RA
         self.stack = self.RA.generate_stack()
         print('new lzpd stack', self.stack)
@@ -44,10 +45,31 @@ class lazyDf():
                      RA.RA_project(self, attribute), self.con)
         return ret
     def __setitem__(self, attribute, value):
-        print('caught set []')
-        ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype, 
-                     RA.RA_operator(('add column', self, attribute, value)), self.con)
-        return ret
+        print('caught set []', attribute, value)
+        #
+        if isinstance(attribute, str):    # if is (probably) a column
+            table = self.find_table(attribute)
+            if table is not None: # if it is a know column
+                update_sql_data(table, attribute, self.index, value, con=self.con)
+            else: # if it is (?) a new column
+                sqltype = get_types(str(value))
+                table_name = 'auto_generated_table_' + str(attribute)
+                # create new table from value with self index and add to db
+                df = pd.DataFrame({'auto_index':self.index, attribute:value} ) #  dtype=dtypes
+                managed_to_sql(df, table_name=table_name, con=self.con)
+                # substitute self with join(self, new)
+                new = lazyDf([table_name], {table_name:[attribute, 'auto_index']}, \
+                             {attribute:sqltype, 'auto_index':"INTEGER"}, \
+                             RA.RA_from(table_name, [attribute, 'auto_index']), self.con)
+                temp = self.merge(new, right_on='auto_index', left_on='auto_index')
+                self.__init__(temp.table_names, temp.dotted_fields, temp.dotted_datatype, temp.RA, temp.con)
+                self.RA.stack.select_stack.remove(table_name+'.'+'auto_index')
+        elif isinstance(attribute, int):
+            print('set[int]. Please use named column/Series')
+            pass
+        elif isinstance(attribute, lazyDf):
+            print('set[lazyDf]')
+            pass
     # fix
     def isnull(self):
         print('caught isnull')
@@ -63,6 +85,7 @@ class lazyDf():
         print('caught merge')
         other = args[0]
         ### add _x _y and user prefix to merge
+        print('merge', self.table_names, other.table_names)
         combined_table_names = self.table_names + other.table_names
         combined_dotted_fields = {**self.dotted_fields, **other.dotted_fields}
         combined_dotted_datatype = {**self.dotted_datatype, **other.dotted_datatype}
@@ -142,6 +165,11 @@ class lazyDf():
             else:
                 self._ndim = 2
         return self._ndim
+    @property
+    def index(self):
+        if self._index is None:
+            self._index = self[self.table_names[0]+'.auto_index'].__array__()
+        return self._index
     def _as_string(self, depth=0, indent=2):
         ret = 'lzdf '+str(depth)+'\n'
         if self.istable():
@@ -181,7 +209,12 @@ class lazyDf():
         query += ' limit ' + str(n) + '\n'
         out = self.execute(query)
         return out_to_pd(out)
-    
+    def find_table(self, attribute):
+        for table_name in self.dotted_fields:
+            print('R: looking for ', attribute, 'in', table_name)
+            if attribute in self.dotted_fields[table_name]:
+                return table_name
+        return None
     ### query related
     def execute(self, query=None):
         if query is None:

@@ -25,18 +25,21 @@ class RA_join(RA_operator):
         self.left  = left
         self.left_on = left_on
         ra_stack = RA_stack()
-        #
         ra_stack_right = self.right.generate_stack()
-        if len(ra_stack_right.from_stack) == 1:
-            stack_right_on = ra_stack_right.from_stack[0] + '.' + self.right_on
-        else:
-            stack_right_on = self.right_on
+        ra_stack_left = self.left.generate_stack()
+        #
+        stack_right_on = self.right_on
+        for table_name in right.dotted_fields:
+            print('R: looking for ', right_on, 'in', table_name)
+            if right_on in right.dotted_fields[table_name]:
+                stack_right_on = table_name + '.' + right_on
             
         ra_stack_left = self.left.generate_stack()
-        if len(ra_stack_left.from_stack) == 1:
-            stack_left_on = ra_stack_left.from_stack[0] + '.' + self.left_on
-        else:
-            stack_left_on = self.left_on
+        stack_left_on = self.left_on
+        for table_name in left.dotted_fields:
+            print('L: looking for ', left_on, 'in', table_name)
+            if left_on in left.dotted_fields[table_name]:
+                stack_left_on = table_name + '.' + left_on
         #
         ra_stack += ra_stack_right
         ra_stack += ra_stack_left
@@ -108,11 +111,15 @@ class RA_groupby(RA_operator):
     def __init__(self, orig, keys):
         self.orig  = orig
         self.keys = keys
+        self.ra_stack = cp.copy(self.orig.generate_stack())
+        self.ra_stack.groupby_stack.append(keys)
     def _as_string(self, depth=0, indent=2):
         ret = 'ragr '+str(depth)+'\n'
         ret += " "*depth*indent + 'group by ' + self.keys + '\n'
         ret += self.orig._as_string(depth+1) + '\n'
         return ret
+    def generate_stack(self):
+        return self.ra_stack
 
 class RA_dropna_subset(RA_operator):
     def __init__(self, orig, subset):
@@ -159,17 +166,20 @@ class RA_stack():
         self.from_stack = []
         self.select_stack = []
         self.where_stack = []
+        self.groupby_stack = []
         print(id(self))
     def __add__(self, other):
         self.from_stack += other.from_stack
         self.select_stack += other.select_stack
         self.where_stack += other.where_stack
+        self.groupby_stack += other.groupby_stack
         self.adjust()
         return self
     def adjust(self):
         self.from_stack = unique_original_order(self.from_stack).tolist()
         self.select_stack = unique_original_order(self.select_stack).tolist()
         self.where_stack = unique_original_order(self.where_stack).tolist()
+        self.groupby_stack = unique_original_order(self.groupby_stack).tolist()
     def generate_query(self):
         self.adjust()
         ret = ''
@@ -189,12 +199,18 @@ class RA_stack():
             for x in self.where_stack[:-1]:
                 ret += '(' + str(x) + ') and '
             ret += '(' + str(self.where_stack[-1]) + ')\n'
+        if len(self.groupby_stack) != 0 :
+            ret += 'group by '
+            for x in self.groupby_stack[:-1]:
+                ret += '(' + str(x) + ') and '
+            ret += '(' + str(self.groupby_stack[-1]) + ')\n'
+        
         return ret
     def __repr__(self):
         return self.generate_query()
         
 def unique_original_order(x):
     sorted_unique, unique_reverse_index = np.unique(x , return_inverse=True)
-    return sorted_unique[unique_reverse_index]
+    return sorted_unique[np.unique(unique_reverse_index)]
         
         
