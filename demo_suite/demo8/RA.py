@@ -75,7 +75,18 @@ class RA_project(RA_operator):
         self.col = col
         print("col_name", col)
         self.ra_stack = cp.copy(self.orig.generate_stack())
-        self.ra_stack.select_stack = [self.col]
+        if self.ra_stack.groupby_stack == []:
+            print('simple project', col)
+            self.ra_stack.select_stack = [self.col]
+        else:
+            self.grby = self.ra_stack.groupby_stack[0] ### fix
+            if self.ra_stack.aggregate_stack != []:
+                self.col_renamed = self.ra_stack.aggregate_stack[0] + '(' + col + ')'
+            else:
+                print('empty aggr func stak', self.ra_stack.aggregate_stack)
+                self.col_renamed = self.col
+            print('aggr project', self.grby, self.col_renamed, self.col)
+            self.ra_stack.select_stack = [self.col_renamed]
     def _as_string(self, depth=0, indent=2):
         ret = 'rapr '+str(depth)+'\n'
         ret += " "*depth*indent + self.col + '\n'
@@ -109,13 +120,88 @@ class RA_sort(RA_operator):
 
 class RA_groupby(RA_operator):
     def __init__(self, orig, keys):
-        self.orig  = orig
+        self.orig = orig
         self.keys = keys
-        self.ra_stack = cp.copy(self.orig.generate_stack())
+        self.ra_stack = cp.deepcopy(orig.generate_stack())
         self.ra_stack.groupby_stack.append(keys)
     def _as_string(self, depth=0, indent=2):
         ret = 'ragr '+str(depth)+'\n'
         ret += " "*depth*indent + 'group by ' + self.keys + '\n'
+        ret += self.orig._as_string(depth+1) + '\n'
+        return ret
+    def generate_stack(self):
+        return self.ra_stack
+
+class RA_sum(RA_operator):
+    def __init__(self, orig):
+        self.orig = orig
+        self.ra_stack = cp.copy(self.orig.generate_stack())
+        self.ra_stack.aggregate_stack.append('sum')
+        if len(self.ra_stack.select_stack) == 1:
+            self.ra_stack.select_stack = 'sum('+self.ra_stack.select_stack[0]+')'
+    def _as_string(self, depth=0, indent=2):
+        ret = 'rasu '+str(depth)+'\n'
+        ret += " "*depth*indent + 'sum \n'
+        ret += self.orig._as_string(depth+1) + '\n'
+        return ret
+    def generate_stack(self):
+        return self.ra_stack
+
+class RA_min(RA_operator):
+    def __init__(self, orig):
+        self.orig = orig
+        self.ra_stack = cp.copy(self.orig.generate_stack())
+        self.ra_stack.aggregate_stack.append('min')
+        if len(self.ra_stack.select_stack) == 1:
+            self.ra_stack.select_stack = 'min('+self.ra_stack.select_stack[0]+')'
+    def _as_string(self, depth=0, indent=2):
+        ret = 'rami '+str(depth)+'\n'
+        ret += " "*depth*indent + 'min \n'
+        ret += self.orig._as_string(depth+1) + '\n'
+        return ret
+    def generate_stack(self):
+        return self.ra_stack
+
+class RA_max(RA_operator):
+    def __init__(self, orig):
+        self.orig = orig
+        self.ra_stack = cp.copy(self.orig.generate_stack())
+        self.ra_stack.aggregate_stack.append('max')
+        if len(self.ra_stack.select_stack) == 1:
+            self.ra_stack.select_stack = 'max('+self.ra_stack.select_stack[0]+')'
+    def _as_string(self, depth=0, indent=2):
+        ret = 'rama '+str(depth)+'\n'
+        ret += " "*depth*indent + 'max \n'
+        ret += self.orig._as_string(depth+1) + '\n'
+        return ret
+    def generate_stack(self):
+        return self.ra_stack
+
+class RA_count(RA_operator):
+    def __init__(self, orig):
+        self.orig = orig
+        self.ra_stack = cp.copy(self.orig.generate_stack())
+        self.ra_stack.aggregate_stack.append('count')
+        if len(self.ra_stack.select_stack) == 1:
+            self.ra_stack.select_stack = 'count('+self.ra_stack.select_stack[0]+')'
+    def _as_string(self, depth=0, indent=2):
+        ret = 'ract '+str(depth)+'\n'
+        ret += " "*depth*indent + 'count \n'
+        ret += self.orig._as_string(depth+1) + '\n'
+        return ret
+    def generate_stack(self):
+        return self.ra_stack
+
+class RA_avg(RA_operator):
+    def __init__(self, orig):
+        self.orig = orig
+        self.ra_stack = cp.copy(self.orig.generate_stack())
+        self.ra_stack.aggregate_stack.append('avg')
+        if len(self.ra_stack.select_stack) == 1:
+            self.ra_stack.select_stack = 'avg('+self.ra_stack.select_stack[0]+')'
+    def _as_string(self, depth=0, indent=2):
+        ret = 'raav '+str(depth)+'\n'
+        ret += " "*depth*indent + 'avg \n'
         ret += self.orig._as_string(depth+1) + '\n'
         return ret
     def generate_stack(self):
@@ -167,12 +253,14 @@ class RA_stack():
         self.select_stack = []
         self.where_stack = []
         self.groupby_stack = []
+        self.aggregate_stack = []
         print(id(self))
     def __add__(self, other):
         self.from_stack += other.from_stack
         self.select_stack += other.select_stack
         self.where_stack += other.where_stack
         self.groupby_stack += other.groupby_stack
+        self.aggregate_stack += other.aggregate_stack
         self.adjust()
         return self
     def adjust(self):
@@ -180,6 +268,7 @@ class RA_stack():
         self.select_stack = unique_original_order(self.select_stack).tolist()
         self.where_stack = unique_original_order(self.where_stack).tolist()
         self.groupby_stack = unique_original_order(self.groupby_stack).tolist()
+        self.aggregate_stack = unique_original_order(self.aggregate_stack).tolist()
     def generate_query(self):
         self.adjust()
         ret = ''

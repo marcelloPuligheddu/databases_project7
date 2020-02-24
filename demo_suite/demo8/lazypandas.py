@@ -25,6 +25,7 @@ class lazyDf():
         self._shape = None
         self._ndim = None
         self._index = None
+        self._array = None
         self.RA = RA
         self.stack = self.RA.generate_stack()
         print('new lzpd stack', self.stack)
@@ -33,17 +34,21 @@ class lazyDf():
 
     # RA operator
     def __getitem__(self, attribute):
-        print('caught get []', self.ndim)
+        print('caught get [', attribute, ']')
         if isinstance(attribute, lazyDf):
             print('Caught lazyDf in get item')
-#            ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype, DAG(), self.con)
-            
-        if self.ndim == 1:
-            print('1 dim. Reverting to numpy')
-            return self.__array__()[attribute]
-        ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype, 
-                     RA.RA_project(self, attribute), self.con)
-        return ret
+            return
+        elif isinstance(attribute, str):    # if is (probably) a column
+            return lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype, 
+                RA.RA_project(self, attribute), self.con)
+        elif isinstance(attribute, int):    # if is (probably) a row
+            if self.ndim == 1:
+                return self.array[attribute]
+            else:
+                print('Caught int in get item with ndim > 1')
+                return
+        
+        return
     def __setitem__(self, attribute, value):
         print('caught set []', attribute, value)
         #
@@ -92,9 +97,38 @@ class lazyDf():
         ret = lazyDf(combined_table_names, combined_dotted_fields, combined_dotted_datatype,
                      RA.RA_join( self, other, kwargs['right_on'], kwargs['left_on']), self.con)
         return ret
-    def groupby(self, *args, **kwargs):
-        print('caught groupby', args, kwargs)
-        by = kwargs.get('by', args[0])
+    def sum(self):
+        print('caught sum')
+        ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype,
+                     RA.RA_sum( self ), self.con)
+        return ret
+    def max(self):
+        print('caught max')
+        ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype,
+                     RA.RA_max( self ), self.con)
+        return ret
+    def min(self):
+        print('caught min')
+        ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype,
+                     RA.RA_min( self ), self.con)
+        return ret
+    def count(self):
+        print('caught max')
+        ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype,
+                     RA.RA_count( self ), self.con)
+        return ret
+    def avg(self):
+        print('caught min')
+        ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype,
+                     RA.RA_avg( self ), self.con)
+        return ret
+    def mean(self):
+        return self.avg()
+    def ave(self):
+        return self.avg()
+    def groupby(self, by):
+        print('caught groupby', by)
+        by = self.find_table(by) + '.' + by
         ret = lazyDf(self.table_names, self.dotted_fields, self.dotted_datatype,
                      RA.RA_groupby( self, by ), self.con)
         return ret
@@ -145,15 +179,7 @@ class lazyDf():
     @property
     def shape(self):
         if self._shape is None:
-            stack = cp.copy(self.stack)
-            print('pre', stack.select_stack, stack.from_stack, stack.where_stack)
-            ncols = len(stack.select_stack)
-            stack.select_stack = ['count(*)']
-            print('pre', stack)
-            query = stack.generate_query()
-            out = self.execute( query )
-            nrows = out.fetchall()[0]
-            self._shape = (ncols, nrows)
+            self._shape = self.array.shape
         return self._shape
     @property
     def ndim(self):
@@ -168,7 +194,7 @@ class lazyDf():
     @property
     def index(self):
         if self._index is None:
-            self._index = self[self.table_names[0]+'.auto_index'].__array__()
+            self._index = self[self.table_names[0]+'.auto_index'].array
         return self._index
     def _as_string(self, depth=0, indent=2):
         ret = 'lzdf '+str(depth)+'\n'
@@ -180,15 +206,23 @@ class lazyDf():
         else:
             ret += " "*depth*indent + self.RA._as_string(depth+1) + '\n'
         return ret
-    def __array__(self):
-        sql_np_type = {'REAL':float, 'INTEGER':int, 'TEXT':'U16'}
-        out = self.execute()
-        labels = [d[0] for d in out.description]
-        if len(labels) == 1:
-            return np.array(out.fetchall(), dtype=sql_np_type[self.dotted_datatype[labels[0]]]).flatten()
-        dtypes = [(label, sql_np_type[self.dotted_datatype[label]]) for label in labels]
-        print(dtypes)
-        return np.array(out.fetchall(), dtype=dtypes)
+    @property
+    def array(self):
+        if self._array is None:
+            sql_np_type = {'REAL':float, 'INTEGER':int, 'TEXT':'U16'}
+            out = self.execute()
+            labels = [d[0] for d in out.description]
+            if len(labels) == 1:
+                print('1D')
+#                self._array = np.array(out.fetchall(), dtype=sql_np_type[self.dotted_datatype[labels[0]]]).flatten()
+                self._array = np.array(out.fetchall()).flatten()
+            else:
+#                dtypes = [(label, sql_np_type[self.dotted_datatype[label]]) for label in labels]
+#                self._array = np.array(out.fetchall(), dtype=dtypes)
+                self._array = np.array(out.fetchall())
+        return self._array
+    def __array__(self, dtype=float):
+        return self.array
     def __repr__(self):
         return str(self.__array__())
     #    return self._as_string()
@@ -211,7 +245,7 @@ class lazyDf():
         return out_to_pd(out)
     def find_table(self, attribute):
         for table_name in self.dotted_fields:
-            print('R: looking for ', attribute, 'in', table_name)
+            print('R: looking for ', attribute, 'in', table_name, self.dotted_fields[table_name])
             if attribute in self.dotted_fields[table_name]:
                 return table_name
         return None
